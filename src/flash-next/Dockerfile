@@ -113,7 +113,8 @@ RUN set -eux; \
     /opt/gufo/build/release/gufo --help >/dev/null
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY docker-serve.sh /usr/local/bin/docker-serve.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-serve.sh
 
 WORKDIR /opt/gufo
 

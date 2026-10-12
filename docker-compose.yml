@@ -13,23 +13,28 @@ services:
     image: harianto/hf-downloader:${HF_DOWNLOADER_TAG:-latest}
     working_dir: /workspace
     volumes:
-      - "${MODELS_DIR:-/data/models}:/workspace/models"
-    command: >
-      sh -lc '
-      set -e
-      dest=/workspace/models/$$(basename $${HF_REPO})
-      hf download $${HF_REPO}
-      --include "UD-IQ4_XS/*.gguf"
-      --revision $${HF_MODEL_REVISION}
-      --repo-type model
-      --local-dir "$${dest}"
-      &&
-      hf download $${HF_REPO}
-      $${HF_MTP_MODEL}
-      --revision $${HF_MTP_MODEL_REVISION}
-      --repo-type model
-      --local-dir "$${dest}"
-      '
+      - "${MODELS_DIR:-./models}:/workspace/models"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    command:
+      - sh
+      - -ec
+      - |
+        dest="/workspace/models/$$(basename "$$HF_REPO")"
+        for shard in \
+          UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf \
+          UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00002-of-00003.gguf \
+          UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00003-of-00003.gguf
+        do
+          hf download "$$HF_REPO" "$$shard" \
+            --revision "$$HF_MODEL_REVISION" \
+            --repo-type model \
+            --local-dir "$$dest"
+        done
+        hf download "$$HF_REPO" "$$HF_MTP_MODEL" \
+          --revision "$$HF_MTP_MODEL_REVISION" \
+          --repo-type model \
+          --local-dir "$$dest"
 
   flash-next:
     container_name: flash-next
@@ -49,7 +54,7 @@ services:
       - "${FLASH_NEXT_PORT:-8900}:8900"
     volumes:
       - flash-next-cache:/root/.cache/gufo
-      - "${MODELS_DIR:-/data/models}:/models:ro"
+      - "${MODELS_DIR:-./models}:/models:ro"
     environment:
       GUFO_MODEL: "${GUFO_MODEL:?set GUFO_MODEL to the first UD-IQ4_XS shard}"
       GUFO_MTP: "${GUFO_MTP:-}"
@@ -74,6 +79,7 @@ services:
       retries: 10
       start_period: 10m
     restart: unless-stopped
+    # Start only after weights exist: docker compose run --rm model-download
 
 volumes:
   flash-next-cache:

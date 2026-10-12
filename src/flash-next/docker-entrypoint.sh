@@ -11,7 +11,7 @@ export LD_LIBRARY_PATH="${ROCM_PATH}/lib:${xrt_lib}${LD_LIBRARY_PATH:+:${LD_LIBR
 
 if [[ "${1:-}" == "serve" ]]; then
   shift
-  exec "${GUFO_DIR}/scripts/run-gufo.sh" "$@"
+  exec /usr/local/bin/docker-serve.sh "$@"
 fi
 
 if [[ "${1:-}" == "gufo" ]]; then
