@@ -1,10 +1,17 @@
 networks:
-  cloudflared:
+  tsdproxy:
     external: true
 
 services:
   flash-next:
+    ports: !reset
     networks:
-      - cloudflared
+      - tsdproxy
+    labels:
+      tsdproxy.enable: true
+      tsdproxy.name: flash-next
+      tsdproxy.autodetect: true
+      tsdproxy.port.1: "443/https:8900/http"
+      tsdproxy.port.2: "80/http:8900/http"
     extra_hosts:
       - "host.docker.internal:host-gateway"
