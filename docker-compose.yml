@@ -1,8 +1,36 @@
 # gufo serving Qwen3.8 Flash-Next (UD-IQ4_XS + optional MTP sidecar).
 # Build: docker compose -f _build.yml build
+# Models: docker compose run --rm model-download
 # Run:   set GUFO_MODEL / GUFO_MTP in .env, then docker compose up -d
 
 services:
+  model-download:
+    env_file:
+      - .env
+    build:
+      context: src/model-download
+      dockerfile: Dockerfile
+    image: harianto/hf-downloader:${HF_DOWNLOADER_TAG:-latest}
+    working_dir: /workspace
+    volumes:
+      - "${MODELS_DIR:-/data/models}:/workspace/models"
+    command: >
+      sh -lc '
+      set -e
+      dest=/workspace/models/$$(basename $${HF_REPO})
+      hf download $${HF_REPO}
+      --include "UD-IQ4_XS/*.gguf"
+      --revision $${HF_MODEL_REVISION}
+      --repo-type model
+      --local-dir "$${dest}"
+      &&
+      hf download $${HF_REPO}
+      $${HF_MTP_MODEL}
+      --revision $${HF_MTP_MODEL_REVISION}
+      --repo-type model
+      --local-dir "$${dest}"
+      '
+
   flash-next:
     container_name: flash-next
     image: harianto/flash-next:${FLASH_NEXT_TAG:-gufo-fork-enhancements}

@@ -1,4 +1,10 @@
 services:
+  model-download:
+    build:
+      context: src/model-download
+      dockerfile: Dockerfile
+    image: harianto/hf-downloader:${HF_DOWNLOADER_TAG:-latest}
+
   flash-next:
     build:
       context: src/flash-next
