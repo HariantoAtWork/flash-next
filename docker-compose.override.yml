@@ -1,0 +1,10 @@
+networks:
+  cloudflared:
+    external: true
+
+services:
+  flash-next:
+    networks:
+      - cloudflared
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

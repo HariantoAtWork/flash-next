@@ -1,0 +1,52 @@
+# gufo serving Qwen3.8 Flash-Next (UD-IQ4_XS + optional MTP sidecar).
+# Build: docker compose -f _build.yml build
+# Run:   set GUFO_MODEL / GUFO_MTP in .env, then docker compose up -d
+
+services:
+  flash-next:
+    container_name: flash-next
+    image: harianto/flash-next:${FLASH_NEXT_TAG:-gufo-fork-enhancements}
+    privileged: true
+    group_add:
+      - "${VIDEO_GID:-26}"
+      - "${RENDER_GID:-383}"
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    shm_size: "8gb"
+    ports:
+      - "${FLASH_NEXT_PORT:-8900}:8900"
+    volumes:
+      - flash-next-cache:/root/.cache/gufo
+      - "${MODELS_DIR:-/data/models}:/models:ro"
+    environment:
+      GUFO_MODEL: "${GUFO_MODEL:?set GUFO_MODEL to the first UD-IQ4_XS shard}"
+      GUFO_MTP: "${GUFO_MTP:-}"
+      PORT: "${FLASH_NEXT_PORT:-8900}"
+      JOBS: "${GUFO_JOBS:-2}"
+      GUFO_CONTEXT: "${GUFO_CONTEXT:-131072}"
+      GUFO_EFFORT: "${GUFO_EFFORT:-low}"
+      GUFO_NPU: "${GUFO_NPU:-0}"
+      XRT_DIR: "${XRT_DIR:-/opt/xilinx/xrt}"
+      GUFO_CACHE_DIR: /root/.cache/gufo/snapshots
+      GUFO_LOG: /root/.cache/gufo/gufo.log
+      ROCM_PATH: /opt/rocm
+    command: ["serve"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://127.0.0.1:${PORT:-8900}/v1/models >/dev/null",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 10m
+    restart: unless-stopped
+
+volumes:
+  flash-next-cache:
+    name: flash-next-cache
