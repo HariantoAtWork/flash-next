@@ -1,7 +1,7 @@
-# gufo serving Qwen3.8 Flash-Next (UD-IQ4_XS + optional MTP sidecar).
+# gufo serving Qwen3.8 Flash-Next (UD-IQ4_XS + optional MTP + mmproj for images).
 # Build: docker compose -f _build.yml build
 # Models: docker compose run --rm model-download
-# Run:   set GUFO_MODEL / GUFO_MTP in .env, then docker compose up -d
+# Run:   set GUFO_MODEL / GUFO_MTP / GUFO_MMPROJ in .env, then docker compose up -d
 
 services:
   model-download:
@@ -14,6 +14,8 @@ services:
     working_dir: /workspace
     volumes:
       - "${MODELS_DIR:-./models}:/workspace/models"
+      # mmproj may live off MODELS_DIR when /docker is tight on space
+      - "${MMPROJ_HOST_DIR:-/var/cache/flash-next}:/workspace/mmproj"
     environment:
       HF_TOKEN: ${HF_TOKEN:-}
     command:
@@ -35,6 +37,10 @@ services:
           --revision "$$HF_MTP_MODEL_REVISION" \
           --repo-type model \
           --local-dir "$$dest"
+        hf download "$$HF_REPO" "$${HF_MMPROJ_MODEL:-mmproj-BF16.gguf}" \
+          --revision "$${HF_MMPROJ_MODEL_REVISION:-$$HF_MODEL_REVISION}" \
+          --repo-type model \
+          --local-dir /workspace/mmproj
 
   flash-next:
     container_name: flash-next
@@ -55,9 +61,14 @@ services:
     volumes:
       - flash-next-cache:/root/.cache/gufo
       - "${MODELS_DIR:-./models}:/models:ro"
+      # Separate mount: cannot create a file mountpoint under the read-only /models volume.
+      - "${MMPROJ_HOST_DIR:-/var/cache/flash-next}:/mmproj:ro"
+      # Pick up serve-script changes without a full image rebuild.
+      - ./src/flash-next/docker-serve.sh:/usr/local/bin/docker-serve.sh:ro
     environment:
       GUFO_MODEL: "${GUFO_MODEL:?set GUFO_MODEL to the first UD-IQ4_XS shard}"
       GUFO_MTP: "${GUFO_MTP:-}"
+      GUFO_MMPROJ: "${GUFO_MMPROJ:-/mmproj/mmproj-BF16.gguf}"
       PORT: "${FLASH_NEXT_PORT:-8900}"
       JOBS: "${GUFO_JOBS:-2}"
       GUFO_CONTEXT: "${GUFO_CONTEXT:-131072}"

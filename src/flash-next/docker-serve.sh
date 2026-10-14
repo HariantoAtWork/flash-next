@@ -12,6 +12,7 @@ PORT=${PORT:-8900}
 JOBS=${JOBS:-2}
 CONTEXT=${GUFO_CONTEXT:-131072}
 MTP=${GUFO_MTP:-}
+MMPROJ=${GUFO_MMPROJ:-}
 
 export LD_LIBRARY_PATH="${ROCM_PATH:-/opt/rocm}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export GUFO_PREFILL_TILE=${GUFO_PREFILL_TILE:-8192}
@@ -42,6 +43,13 @@ else
   SPEC=()
 fi
 
+if [ -n "$MMPROJ" ] && [ -f "$MMPROJ" ]; then
+  VISION=(--mmproj "$MMPROJ")
+else
+  echo "WARNING: no vision projector (set GUFO_MMPROJ): image inputs disabled." >&2
+  VISION=()
+fi
+
 exec env "${NPU_ENV[@]}" "$GUFO_BIN" serve llm \
   -m "$GUFO_MODEL" \
   --host 0.0.0.0 \
@@ -52,6 +60,7 @@ exec env "${NPU_ENV[@]}" "$GUFO_BIN" serve llm \
   -j "$JOBS" \
   --prefill-chunk 4096 \
   "${SPEC[@]}" \
+  "${VISION[@]}" \
   --cache-disk "$CACHE_DIR" \
   --cache-disk-bytes "$CACHE_BYTES" \
   --cache-disk-staging-bytes "${GUFO_CACHE_STAGING_BYTES:-4294967296}" \
