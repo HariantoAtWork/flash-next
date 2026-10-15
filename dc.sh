@@ -15,6 +15,10 @@
 #
 # Requires GUFO_MODEL (and optionally GUFO_MTP / GUFO_MMPROJ) in .env;
 # see .env.example.
+#
+# GPU: host video/render group ids are auto-detected and passed to compose
+# as VIDEO_GID / RENDER_GID; override with:
+#   VIDEO_GID=44 RENDER_GID=999 ./dc.sh up
 
 set -euo pipefail
 
@@ -25,7 +29,26 @@ MAIN="-f docker-compose.yml -f docker-compose.override.yml"
 BUILD="-f _build.yml"
 
 usage() {
-    sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# Resolve host video/render group ids (flash-next needs them via group_add).
+# Precedence: env override > device ownership > named groups > compose defaults.
+export_gpu_gids() {
+    if [ -z "${VIDEO_GID:-}" ]; then
+        VIDEO_GID="$(stat -c %g /dev/dri/card0 2>/dev/null \
+            || getent group video | cut -d: -f3 2>/dev/null \
+            || true)"
+    fi
+    if [ -z "${RENDER_GID:-}" ]; then
+        RENDER_GID="$(stat -c %g /dev/dri/renderD128 2>/dev/null \
+            || getent group render | cut -d: -f3 2>/dev/null \
+            || true)"
+    fi
+    [ -n "${VIDEO_GID:-}" ] || { echo "WARN: VIDEO_GID not detected; set it manually." >&2; }
+    [ -n "${RENDER_GID:-}" ] || { echo "WARN: RENDER_GID not detected; set it manually." >&2; }
+    export VIDEO_GID RENDER_GID
+    echo "==> GPU gids: video=${VIDEO_GID:-?} render=${RENDER_GID:-?}"
 }
 
 # Wait until the serve healthcheck reports the API is up.
@@ -58,6 +81,7 @@ case "${cmd}" in
         ;;
     up)
         services="${@:-flash-next}"
+        export_gpu_gids
         echo "==> Starting: ${services}"
         ${COMPOSE} ${MAIN} up -d ${services}
         wait_ready
@@ -66,7 +90,8 @@ case "${cmd}" in
         ${COMPOSE} ${MAIN} down "$@"
         ;;
     restart)
-        ${COMPOSE} ${MAIN} restart flash-next
+        export_gpu_gids
+        ${COMPOSE} ${MAIN} up -d --force-recreate flash-next
         wait_ready
         ;;
     ps)
