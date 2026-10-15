@@ -77,6 +77,7 @@ VIDEO_GID=44 RENDER_GID=999 ./dc.sh up
 | `.env.example` | Tokens, model paths, tags, NPU flag |
 | `src/flash-next/` | Gufo image Dockerfile + serve scripts |
 | `src/model-download/` | Hugging Face downloader image |
+| `docs/` | Troubleshooting (NPU) and notes |
 | `models/` | Local GGUF weights (gitignored) |
 
 Local `docker-compose.yml`, `docker-compose.override.yml`, and `.env` are gitignored; create them with `./dc.sh init` (and optionally `init:override`) or by copying the `*.example` files yourself.
@@ -94,7 +95,7 @@ Important variables (see `.env.example`):
 | `GUFO_MMPROJ` | Vision projector for image inputs |
 | `MODELS_DIR` | Host models directory (default `./models`) |
 | `FLASH_NEXT_PORT` | Published / serve port (default `8900`) |
-| `GUFO_NPU` | `0` = GPU-only unless host NPU is configured |
+| `GUFO_NPU` | `1` = NPU path (fabric clock held by `fabric-clock` service); `0` = GPU-only |
 | `VIDEO_GID` / `RENDER_GID` | Optional; otherwise detected from `/dev/dri` |
 
 ## Notes
