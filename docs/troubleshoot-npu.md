@@ -116,7 +116,11 @@ Then `flash-next` will not start (`depends_on:
 service_completed_successfully`). Typical causes:
 
 - Container not privileged (sysfs write denied)
+- Missing `/dev/kfd` / `/dev/dri` on the `fabric-clock` service (separate
+  container — GPU nodes should be passed so amdgpu sysfs is present)
 - No amdgpu `pp_dpm_fclk` node visible
+- Hold verify flake (`could not hold it` within ~5s) — retry
+  `./dc.sh restart`; clock may already be held
 - Driver / firmware oddity on this board
 
 Inspect:
@@ -124,7 +128,7 @@ Inspect:
 ```bash
 docker compose logs fabric-clock
 docker compose run --rm --entrypoint sh fabric-clock -c \
-  'ls /sys/class/drm/card*/device/pp_dpm_fclk'
+  'ls /sys/class/drm/card*/device/pp_dpm_fclk; ls -l /dev/dri /dev/kfd'
 ```
 
 ---

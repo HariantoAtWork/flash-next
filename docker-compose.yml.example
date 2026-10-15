@@ -52,6 +52,11 @@ services:
   fabric-clock:
     image: harianto/flash-next:${FLASH_NEXT_TAG:-gufo-fork-enhancements}
     privileged: true
+    # Separate container: pass GPU nodes so amdgpu sysfs (pp_dpm_fclk) is
+    # reliably present. /dev/accel is only needed by flash-next for NPU serve.
+    devices:
+      - /dev/kfd
+      - /dev/dri
     entrypoint: ["/opt/gufo/tools/npu/fabric-clock.sh"]
     command: ["hold"]
     restart: "no"
