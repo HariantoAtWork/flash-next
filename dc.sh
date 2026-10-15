@@ -15,6 +15,9 @@
 #   ./dc.sh pull [service ...]      pull images (default: all)
 #   ./dc.sh config                  print merged compose config
 #
+# Developers (Hub multi-arch publish; not needed for local run):
+#   ./dc.sh push [service ...]      build+push via _push.yml (amd64 + arm64)
+#
 # First-time setup: ./dc.sh init && ./dc.sh init:override
 # Requires GUFO_MODEL (and optionally GUFO_MTP / GUFO_MMPROJ) in .env;
 # see .env.example.
@@ -29,9 +32,10 @@ cd "$(dirname "$0")"
 
 COMPOSE="docker compose"
 BUILD="-f _build.yml"
+PUSH="-f _push.yml"
 
 usage() {
-    sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 # Compose file set: main yml required; override only when present (tsdproxy etc.).
@@ -124,6 +128,13 @@ case "${cmd}" in
         services="${@:-}"
         echo "==> Building image(s): ${services:-all}"
         ${COMPOSE} ${BUILD} build ${services}
+        ;;
+    push)
+        # Developers only: Hub multi-arch publish (linux/amd64 + linux/arm64).
+        # Not needed for local init/build/download/up.
+        services="${@:-}"
+        echo "==> [developers] multi-arch build+push via _push.yml: ${services:-all}"
+        ${COMPOSE} ${PUSH} build --no-cache --push ${services}
         ;;
     download)
         echo "==> Downloading model weights (idempotent, re-run safe)"

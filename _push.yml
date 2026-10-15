@@ -1,0 +1,30 @@
+# Overlay for Hub multi-arch publishes (self-contained; not merged with _build.yml).
+# Multi-arch cannot be loaded into the local Docker engine, so local
+# builds stay on _build.yml only (./dc.sh build).
+services:
+  model-download:
+    build:
+      context: src/model-download
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    image: harianto/hf-downloader:${HF_DOWNLOADER_TAG:-latest}
+
+  flash-next:
+    build:
+      context: src/flash-next
+      dockerfile: Dockerfile
+      args:
+        ROCM_VERSION: "${ROCM_VERSION:-7.2.4}"
+        TARGET_GFX: "${TARGET_GFX:-gfx1151}"
+        GUFO_REPO: "${GUFO_REPO:-https://github.com/mikealanni/gufo.git}"
+        GUFO_REF: "${GUFO_REF:-fork-enhancements}"
+        GUFO_ENABLE_NPU: "${GUFO_ENABLE_NPU:-ON}"
+        GUFO_XRT_INCLUDE_DIR: "${GUFO_XRT_INCLUDE_DIR:-/usr/include}"
+        GUFO_XRT_LIB_DIR: "${GUFO_XRT_LIB_DIR:-/usr/lib/x86_64-linux-gnu}"
+        BUILD_PARALLEL: "${BUILD_PARALLEL:-2}"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    image: harianto/flash-next:${FLASH_NEXT_TAG:-gufo-fork-enhancements}

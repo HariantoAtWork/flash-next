@@ -46,12 +46,13 @@ curl -s http://127.0.0.1:8900/v1/models
 | --- | --- |
 | `init` | Copy `*.example` → local files (skips override; never overwrites) |
 | `init:override` | Copy `docker-compose.override.yml.example` |
-| `build [service…]` | Build via `_build.yml` |
+| `build [service…]` | Build via `_build.yml` (local) |
 | `download` | Run `model-download` (idempotent) |
 | `up [service…]` | Start stack (default: `flash-next`); auto-sets `VIDEO_GID` / `RENDER_GID` |
 | `down` | Stop stack |
 | `restart` | Recreate `flash-next` with current gids |
 | `ps` / `logs` / `run` / `pull` / `config` | Thin wrappers around Compose |
+| `push [service…]` | **Developers:** multi-arch build+push via `_push.yml` (amd64 + arm64) |
 
 GPU group override:
 
@@ -66,7 +67,8 @@ VIDEO_GID=44 RENDER_GID=999 ./dc.sh up
 | `dc.sh` | Entry point for setup and day-to-day Compose |
 | `docker-compose.yml.example` | Runtime services (`flash-next`, `model-download`) |
 | `docker-compose.override.yml.example` | Optional tsdproxy network / labels |
-| `_build.yml` | Image builds (`harianto/flash-next`, `harianto/hf-downloader`) |
+| `_build.yml` | Local image builds (`harianto/flash-next`, `harianto/hf-downloader`) |
+| `_push.yml` | Developer Hub multi-arch publish (amd64 + arm64); use `./dc.sh push` |
 | `.env.example` | Tokens, model paths, tags, NPU flag |
 | `src/flash-next/` | Gufo image Dockerfile + serve scripts |
 | `src/model-download/` | Hugging Face downloader image |
