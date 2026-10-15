@@ -2,17 +2,20 @@
 # dc.sh - docker compose helper for the flash-next stack.
 #
 # Usage:
+#   ./dc.sh init                    copy *.example → local files (skip override)
+#   ./dc.sh init:override           copy docker-compose.override.yml.example
 #   ./dc.sh build [service ...]     build images via _build.yml (default: all)
 #   ./dc.sh download                download model weights (model-download)
 #   ./dc.sh up [service ...]        start the stack (default: flash-next)
 #   ./dc.sh down [args ...]         stop the stack
 #   ./dc.sh restart                 restart the flash-next container
-#   ./dc.sh ps                        list containers
+#   ./dc.sh ps                      list containers
 #   ./dc.sh logs [service ...]      tail logs (default: flash-next)
 #   ./dc.sh run [service] [cmd ...] run a one-off container (default: flash-next)
 #   ./dc.sh pull [service ...]      pull images (default: all)
 #   ./dc.sh config                  print merged compose config
 #
+# First-time setup: ./dc.sh init && ./dc.sh init:override
 # Requires GUFO_MODEL (and optionally GUFO_MTP / GUFO_MMPROJ) in .env;
 # see .env.example.
 #
@@ -25,11 +28,39 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 COMPOSE="docker compose"
-MAIN="-f docker-compose.yml -f docker-compose.override.yml"
 BUILD="-f _build.yml"
 
 usage() {
-    sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# Compose file set: main yml required; override only when present (tsdproxy etc.).
+compose_main() {
+    if [ ! -f docker-compose.yml ]; then
+        echo "Missing docker-compose.yml. Run: ./dc.sh init" >&2
+        exit 1
+    fi
+    local args=(-f docker-compose.yml)
+    if [ -f docker-compose.override.yml ]; then
+        args+=(-f docker-compose.override.yml)
+    fi
+    printf '%s\n' "${args[@]}"
+}
+
+# Copy SRC → DEST unless DEST already exists.
+cp_example() {
+    local src="$1"
+    local dest="$2"
+    if [ ! -f "$src" ]; then
+        echo "Missing example: $src" >&2
+        return 1
+    fi
+    if [ -e "$dest" ]; then
+        echo "==> skip $dest (already exists)"
+        return 0
+    fi
+    cp "$src" "$dest"
+    echo "==> created $dest from $src"
 }
 
 # Resolve host video/render group ids (flash-next needs them via group_add).
@@ -54,8 +85,10 @@ export_gpu_gids() {
 # Wait until the serve healthcheck reports the API is up.
 wait_ready() {
     echo "Waiting for flash-next (model load can take up to 10 minutes)..."
+    local -a main
+    mapfile -t main < <(compose_main)
     for _ in $(seq 1 120); do
-        if docker compose ${MAIN} exec -T flash-next \
+        if docker compose "${main[@]}" exec -T flash-next \
             curl -sf http://127.0.0.1:8900/v1/models >/dev/null 2>&1; then
             echo "flash-next is ready."
             return 0
@@ -70,6 +103,23 @@ cmd="${1:-}"
 shift || true
 
 case "${cmd}" in
+    init)
+        echo "==> Initialising from *.example (excluding override)"
+        shopt -s nullglob
+        for src in .env.example *.example; do
+            case "$src" in
+                *override*.example) continue ;;
+            esac
+            # .env.example → .env ; docker-compose.yml.example → docker-compose.yml
+            cp_example "$src" "${src%.example}"
+        done
+        shopt -u nullglob
+        echo "==> Done. Optional tsdproxy: ./dc.sh init:override"
+        ;;
+    init:override)
+        echo "==> Initialising docker-compose.override.yml"
+        cp_example docker-compose.override.yml.example docker-compose.override.yml
+        ;;
     build)
         services="${@:-}"
         echo "==> Building image(s): ${services:-all}"
@@ -77,41 +127,50 @@ case "${cmd}" in
         ;;
     download)
         echo "==> Downloading model weights (idempotent, re-run safe)"
-        ${COMPOSE} ${MAIN} run --rm model-download
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" run --rm model-download
         ;;
     up)
         services="${@:-flash-next}"
         export_gpu_gids
         echo "==> Starting: ${services}"
-        ${COMPOSE} ${MAIN} up -d ${services}
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" up -d ${services}
         wait_ready
         ;;
     down)
-        ${COMPOSE} ${MAIN} down "$@"
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" down "$@"
         ;;
     restart)
         export_gpu_gids
-        ${COMPOSE} ${MAIN} up -d --force-recreate flash-next
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" up -d --force-recreate flash-next
         wait_ready
         ;;
     ps)
-        ${COMPOSE} ${MAIN} ps "$@"
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" ps "$@"
         ;;
     logs)
         services="${@:-flash-next}"
-        ${COMPOSE} ${MAIN} logs -f --tail=100 ${services}
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" logs -f --tail=100 ${services}
         ;;
     run)
         service="${1:-flash-next}"
         shift || true
-        ${COMPOSE} ${MAIN} run --rm "${service}" "$@"
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" run --rm "${service}" "$@"
         ;;
     pull)
         services="${@:-}"
-        ${COMPOSE} ${MAIN} pull ${services}
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" pull ${services}
         ;;
     config)
-        ${COMPOSE} ${MAIN} config
+        mapfile -t MAIN < <(compose_main)
+        ${COMPOSE} "${MAIN[@]}" config
         ;;
     ""|-h|--help|help)
         usage

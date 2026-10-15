@@ -1,7 +1,8 @@
 # gufo serving Qwen3.8 Flash-Next (UD-IQ4_XS + optional MTP + mmproj for images).
-# Build: docker compose -f _build.yml build
-# Models: docker compose run --rm model-download
-# Run:   set GUFO_MODEL / GUFO_MTP / GUFO_MMPROJ in .env, then docker compose up -d
+# Setup: ./dc.sh init   (and optionally ./dc.sh init:override for tsdproxy)
+# Build: ./dc.sh build
+# Models: ./dc.sh download
+# Run:   set GUFO_MODEL / GUFO_MTP / GUFO_MMPROJ in .env, then ./dc.sh up
 
 services:
   model-download:
