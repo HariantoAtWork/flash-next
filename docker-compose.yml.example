@@ -95,6 +95,8 @@ services:
       # Serve context window (tokens). Default 128K; model max is 262144
       # if VRAM allows. KV-cache memory scales with this value.
       GUFO_CONTEXT: "${GUFO_CONTEXT:-131072}"
+      # Prefill tile (tokens). ~3 GiB scratch at 8192, ~9 GiB at 16384.
+      GUFO_PREFILL_TILE: "${GUFO_PREFILL_TILE:-8192}"
       GUFO_EFFORT: "${GUFO_EFFORT:-low}"
       GUFO_NPU: "${GUFO_NPU:-0}"
       XRT_DIR: "${XRT_DIR:-/opt/xilinx/xrt}"
