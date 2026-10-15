@@ -1,0 +1,97 @@
+# flash-next
+
+Docker stack for serving **Qwen3.8 Flash-Next** (UD-IQ4_XS GGUF + optional MTP + mmproj for images) via [gufo](https://github.com/mikealanni/gufo) on AMD ROCm / Radeon GPUs.
+
+## Requirements
+
+- Docker with Compose v2
+- AMD GPU with ROCm (`/dev/kfd`, `/dev/dri`)
+- Host membership in the `video` / `render` groups (gids are auto-detected by `dc.sh`)
+- Hugging Face token with access to the model repo (set in `.env`)
+
+## Quick start
+
+Create the local config files (either way works; neither overwrites existing files when using `init`):
+
+```bash
+# Option A — helper
+./dc.sh init                 # .env + docker-compose.yml from *.example
+./dc.sh init:override        # optional: tsdproxy override
+
+# Option B — manual
+cp .env.example .env
+cp docker-compose.yml.example docker-compose.yml
+cp docker-compose.override.yml.example docker-compose.override.yml   # optional
+```
+
+Edit `.env`: set `HF_TOKEN`, and confirm `GUFO_MODEL` / `GUFO_MTP` / `GUFO_MMPROJ`.
+
+Then build (first time), download weights if needed, and start:
+
+```bash
+./dc.sh build                # first time / after Dockerfile changes
+./dc.sh download             # first time / when weights are missing
+./dc.sh up                   # start flash-next (waits until /v1/models is ready)
+```
+
+API listens on port `8900` by default (`FLASH_NEXT_PORT`).
+
+```bash
+curl -s http://127.0.0.1:8900/v1/models
+```
+
+## `dc.sh` commands
+
+| Command | What it does |
+| --- | --- |
+| `init` | Copy `*.example` → local files (skips override; never overwrites) |
+| `init:override` | Copy `docker-compose.override.yml.example` |
+| `build [service…]` | Build via `_build.yml` |
+| `download` | Run `model-download` (idempotent) |
+| `up [service…]` | Start stack (default: `flash-next`); auto-sets `VIDEO_GID` / `RENDER_GID` |
+| `down` | Stop stack |
+| `restart` | Recreate `flash-next` with current gids |
+| `ps` / `logs` / `run` / `pull` / `config` | Thin wrappers around Compose |
+
+GPU group override:
+
+```bash
+VIDEO_GID=44 RENDER_GID=999 ./dc.sh up
+```
+
+## Layout
+
+| Path | Role |
+| --- | --- |
+| `dc.sh` | Entry point for setup and day-to-day Compose |
+| `docker-compose.yml.example` | Runtime services (`flash-next`, `model-download`) |
+| `docker-compose.override.yml.example` | Optional tsdproxy network / labels |
+| `_build.yml` | Image builds (`harianto/flash-next`, `harianto/hf-downloader`) |
+| `.env.example` | Tokens, model paths, tags, NPU flag |
+| `src/flash-next/` | Gufo image Dockerfile + serve scripts |
+| `src/model-download/` | Hugging Face downloader image |
+| `models/` | Local GGUF weights (gitignored) |
+
+Local `docker-compose.yml`, `docker-compose.override.yml`, and `.env` are gitignored; create them with `./dc.sh init` (and optionally `init:override`) or by copying the `*.example` files yourself.
+
+## Environment
+
+Important variables (see `.env.example`):
+
+| Variable | Purpose |
+| --- | --- |
+| `HF_TOKEN` | Hugging Face auth for downloads |
+| `HF_REPO` / `HF_*_MODEL` | Which GGUF files to fetch |
+| `GUFO_MODEL` | First UD-IQ4_XS shard path inside the container |
+| `GUFO_MTP` | Optional MTP draft model |
+| `GUFO_MMPROJ` | Vision projector for image inputs |
+| `MODELS_DIR` | Host models directory (default `./models`) |
+| `FLASH_NEXT_PORT` | Published / serve port (default `8900`) |
+| `GUFO_NPU` | `0` = GPU-only unless host NPU is configured |
+| `VIDEO_GID` / `RENDER_GID` | Optional; otherwise detected from `/dev/dri` |
+
+## Notes
+
+- First model load can take several minutes; `up` / `restart` poll `/v1/models` for up to ~10 minutes.
+- Build args (ROCm version, `gfx` target, gufo ref, NPU compile) live in `_build.yml` and can be overridden via `.env`.
+- Changelog entries live in `.changelog/` (not a root `CHANGELOG.md`).
