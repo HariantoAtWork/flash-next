@@ -70,7 +70,7 @@ VIDEO_GID=44 RENDER_GID=999 ./dc.sh up
 | Path | Role |
 | --- | --- |
 | `dc.sh` | Entry point for setup and day-to-day Compose |
-| `docker-compose.yml.example` | Runtime services (`flash-next`, `model-download`) |
+| `docker-compose.yml.example` | Runtime services (`flash-next`, `fabric-clock`, `model-download`) |
 | `docker-compose.override.yml.example` | Optional tsdproxy network / labels |
 | `_build.yml` | Local image builds (`harianto/flash-next`, `harianto/hf-downloader`) |
 | `_push.yml` | Developer Hub multi-arch publish (amd64 + arm64); use `./dc.sh push` |
@@ -101,6 +101,7 @@ Important variables (see `.env.example`):
 
 - Newcomers: `./dc.sh init` builds `model-download` only; `./dc.sh up` pulls `harianto/flash-next` from Docker Hub. Building `flash-next` locally is optional (developers / custom ROCm builds).
 - `model-download` uses compose profile `init`, so plain `docker compose up` / `./dc.sh up` never starts it — only `./dc.sh download` (or `--profile init`).
+- NPU (`GUFO_NPU=1`): the one-shot `fabric-clock` service pins the GPU fabric clock before `flash-next` starts. Keep `GUFO_NPU=0` to stay GPU-only; the serve script still skips NPU unless `/dev/accel/accel0` is present and the clock is held. `compose down` does not release the clock (it resets at reboot).
 - First model load can take several minutes; `up` / `restart` poll `/v1/models` for up to ~10 minutes.
 - Build args (ROCm version, `gfx` target, gufo ref, NPU compile) live in `_build.yml` and can be overridden via `.env`.
 - Changelog entries live in `.changelog/` (not a root `CHANGELOG.md`).

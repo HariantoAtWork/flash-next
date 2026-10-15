@@ -45,6 +45,17 @@ services:
           --repo-type model \
           --local-dir "$$dest"
 
+  # One-shot init for the NPU path: pins the GPU fabric clock (pp_dpm_fclk)
+  # at its top level before flash-next starts, then exits. Needs privileged
+  # sysfs write access. The clock resets at reboot; `compose down` does not
+  # revert it (run fabric-clock.sh release manually if needed).
+  fabric-clock:
+    image: harianto/flash-next:${FLASH_NEXT_TAG:-gufo-fork-enhancements}
+    privileged: true
+    entrypoint: ["/opt/gufo/tools/npu/fabric-clock.sh"]
+    command: ["hold"]
+    restart: "no"
+
   flash-next:
     container_name: flash-next
     image: harianto/flash-next:${FLASH_NEXT_TAG:-gufo-fork-enhancements}
@@ -55,6 +66,10 @@ services:
     devices:
       - /dev/kfd
       - /dev/dri
+      - /dev/accel/accel0
+    depends_on:
+      fabric-clock:
+        condition: service_completed_successfully
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
