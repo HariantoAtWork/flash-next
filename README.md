@@ -11,28 +11,33 @@ Docker stack for serving **Qwen3.8 Flash-Next** (UD-IQ4_XS GGUF + optional MTP +
 
 ## Quick start
 
-Create the local config files (either way works; neither overwrites existing files when using `init`):
+**Newcomers** — `init` copies local config and builds only `model-download`. The
+heavy `flash-next` image is pulled from Docker Hub (`harianto/flash-next`) on `up`:
 
 ```bash
-# Option A — helper
-./dc.sh init                 # .env + docker-compose.yml from *.example
+./dc.sh init                 # *.example → local files + build model-download
 ./dc.sh init:override        # optional: tsdproxy override
-
-# Option B — manual
-cp .env.example .env
-cp docker-compose.yml.example docker-compose.yml
-cp docker-compose.override.yml.example docker-compose.override.yml   # optional
 ```
 
 Edit `.env`: set `HF_TOKEN`, and confirm `GUFO_MODEL` / `GUFO_MTP` / `GUFO_MMPROJ`.
 
-Then build (first time), download weights if needed, and start:
+```bash
+./dc.sh download             # fetch GGUF shards + MTP + mmproj into ./models
+./dc.sh up                   # pulls harianto/flash-next from Hub if missing, then starts
+```
+
+Or copy the examples yourself (then build the downloader separately):
 
 ```bash
-./dc.sh build                # first time / after Dockerfile changes
-./dc.sh download             # first time / when weights are missing
-./dc.sh up                   # start flash-next (waits until /v1/models is ready)
+cp .env.example .env
+cp docker-compose.yml.example docker-compose.yml
+cp docker-compose.override.yml.example docker-compose.override.yml   # optional
+./dc.sh build model-download
+./dc.sh download
+./dc.sh up
 ```
+
+Developers who change the gufo image still run `./dc.sh build` (or `./dc.sh build flash-next`) instead of relying on Hub.
 
 API listens on port `8900` by default (`FLASH_NEXT_PORT`).
 
@@ -44,10 +49,10 @@ curl -s http://127.0.0.1:8900/v1/models
 
 | Command | What it does |
 | --- | --- |
-| `init` | Copy `*.example` → local files (skips override; never overwrites) |
+| `init` | Copy `*.example` → local files (skips override; never overwrites) + build `model-download` |
 | `init:override` | Copy `docker-compose.override.yml.example` |
-| `build [service…]` | Build via `_build.yml` (local) |
-| `download` | Run `model-download` (idempotent) |
+| `build [service…]` | Build via `_build.yml` (newcomers: `model-download` only; full build is for developers) |
+| `download` | Run `model-download` via compose profile `init` (idempotent; not part of plain `up`) |
 | `up [service…]` | Start stack (default: `flash-next`); auto-sets `VIDEO_GID` / `RENDER_GID` |
 | `down` | Stop stack |
 | `restart` | Recreate `flash-next` with current gids |
@@ -94,6 +99,8 @@ Important variables (see `.env.example`):
 
 ## Notes
 
+- Newcomers: `./dc.sh init` builds `model-download` only; `./dc.sh up` pulls `harianto/flash-next` from Docker Hub. Building `flash-next` locally is optional (developers / custom ROCm builds).
+- `model-download` uses compose profile `init`, so plain `docker compose up` / `./dc.sh up` never starts it — only `./dc.sh download` (or `--profile init`).
 - First model load can take several minutes; `up` / `restart` poll `/v1/models` for up to ~10 minutes.
 - Build args (ROCm version, `gfx` target, gufo ref, NPU compile) live in `_build.yml` and can be overridden via `.env`.
 - Changelog entries live in `.changelog/` (not a root `CHANGELOG.md`).

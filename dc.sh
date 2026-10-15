@@ -2,10 +2,10 @@
 # dc.sh - docker compose helper for the flash-next stack.
 #
 # Usage:
-#   ./dc.sh init                    copy *.example → local files (skip override)
+#   ./dc.sh init                    copy *.example (skip override) + build model-download
 #   ./dc.sh init:override           copy docker-compose.override.yml.example
 #   ./dc.sh build [service ...]     build images via _build.yml (default: all)
-#   ./dc.sh download                download model weights (model-download)
+#   ./dc.sh download                download weights (compose profile: init)
 #   ./dc.sh up [service ...]        start the stack (default: flash-next)
 #   ./dc.sh down [args ...]         stop the stack
 #   ./dc.sh restart                 restart the flash-next container
@@ -19,6 +19,7 @@
 #   ./dc.sh push [service ...]      build+push via _push.yml (amd64 + arm64)
 #
 # First-time setup: ./dc.sh init && ./dc.sh init:override
+# Then edit .env, ./dc.sh download, ./dc.sh up (pulls flash-next from Hub).
 # Requires GUFO_MODEL (and optionally GUFO_MTP / GUFO_MMPROJ) in .env;
 # see .env.example.
 #
@@ -35,7 +36,7 @@ BUILD="-f _build.yml"
 PUSH="-f _push.yml"
 
 usage() {
-    sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 # Compose file set: main yml required; override only when present (tsdproxy etc.).
@@ -118,7 +119,11 @@ case "${cmd}" in
             cp_example "$src" "${src%.example}"
         done
         shopt -u nullglob
-        echo "==> Done. Optional tsdproxy: ./dc.sh init:override"
+        # Newcomers: only the HF downloader is built locally; flash-next comes from Hub.
+        echo "==> Building model-download only (flash-next is pulled from Hub on up)"
+        ${COMPOSE} ${BUILD} build model-download
+        echo "==> Done. Edit .env, then: ./dc.sh download && ./dc.sh up"
+        echo "==> Optional tsdproxy: ./dc.sh init:override"
         ;;
     init:override)
         echo "==> Initialising docker-compose.override.yml"
@@ -137,9 +142,10 @@ case "${cmd}" in
         ${COMPOSE} ${PUSH} build --no-cache --push ${services}
         ;;
     download)
-        echo "==> Downloading model weights (idempotent, re-run safe)"
+        # model-download is behind compose profile "init" so plain `up` skips it.
+        echo "==> Downloading model weights (profile init; idempotent)"
         mapfile -t MAIN < <(compose_main)
-        ${COMPOSE} "${MAIN[@]}" run --rm model-download
+        ${COMPOSE} "${MAIN[@]}" --profile init run --rm model-download
         ;;
     up)
         services="${@:-flash-next}"

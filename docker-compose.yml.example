@@ -5,7 +5,11 @@
 # Run:   set GUFO_MODEL / GUFO_MTP / GUFO_MMPROJ in .env, then ./dc.sh up
 
 services:
+  # One-shot HF weight fetch — enabled only with profile "init"
+  # (./dc.sh init / ./dc.sh download). Not started by plain `compose up`.
   model-download:
+    profiles:
+      - init
     env_file:
       - .env
     build:
@@ -87,7 +91,7 @@ services:
       retries: 10
       start_period: 10m
     restart: unless-stopped
-    # Start only after weights exist: docker compose run --rm model-download
+    # Start only after weights exist: ./dc.sh download  (profile init)
 
 volumes:
   flash-next-cache:
