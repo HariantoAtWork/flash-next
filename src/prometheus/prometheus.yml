@@ -1,0 +1,14 @@
+# Scrapes gufo's Prometheus metrics from the flash-next service.
+# Runtime TSDB lives in .data/prometheus/ (bind-mounted at /prometheus).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "gufo"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["flash-next:8900"]
+        labels:
+          service: gufo
+          model: qwen3.8-flash-next

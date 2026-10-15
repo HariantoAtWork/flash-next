@@ -15,3 +15,44 @@ services:
       tsdproxy.port.2: "80/http:8900/http"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # Prometheus scrapes gufo /metrics; TSDB under .data/prometheus.
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: flash-next-prometheus
+    networks:
+      - tsdproxy
+    volumes:
+      - ./src/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./.data/prometheus:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    restart: unless-stopped
+
+  # Grafana web UI; state under .data/grafana, dashboards from src/grafana.
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: flash-next-grafana
+    depends_on:
+      - prometheus
+    networks:
+      - tsdproxy
+    environment:
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./.data/grafana:/var/lib/grafana
+      - ./src/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./src/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    labels:
+      tsdproxy.enable: true
+      tsdproxy.name: grafana
+      tsdproxy.autodetect: true
+      tsdproxy.port.1: "443/https:3000/http"
+      tsdproxy.port.2: "80/http:3000/http"
+    restart: unless-stopped

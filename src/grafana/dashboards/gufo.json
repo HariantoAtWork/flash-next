@@ -1,0 +1,189 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Prompt tokens/s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate({\"llamacpp:prompt_tokens_total\"}[1m])",
+          "legendFormat": "prompt tok/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Generate tokens/s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate({\"llamacpp:tokens_predicted_total\"}[1m])",
+          "legendFormat": "gen tok/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "KV-cache usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "{\"llamacpp:kv_cache_usage_ratio\"}",
+          "legendFormat": "kv usage",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "In-flight / deferred requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "{\"llamacpp:requests_processing\"}",
+          "legendFormat": "processing",
+          "refId": "A"
+        },
+        {
+          "expr": "{\"llamacpp:requests_deferred\"}",
+          "legendFormat": "deferred",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "Speculative decode acceptance",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate({\"llamacpp:spec_decode_num_accepted_tokens_total\"}[5m]) / clamp_min(rate({\"llamacpp:spec_decode_num_draft_tokens_total\"}[5m]), 1e-9)",
+          "legendFormat": "accept ratio",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Prompt cache hit ratio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 6,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate({\"llamacpp:prompt_tokens_cached_total\"}[5m]) / clamp_min(rate({\"llamacpp:prompt_tokens_cached_total\"}[5m]) + rate({\"llamacpp:prompt_tokens_total\"}[5m]), 1e-9)",
+          "legendFormat": "cache hit",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "GPU context losses",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 7,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "gufo_device_lost_total",
+          "legendFormat": "device lost",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["gufo", "flash-next"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Gufo / Flash-Next",
+  "uid": "gufo-flash-next",
+  "version": 1
+}

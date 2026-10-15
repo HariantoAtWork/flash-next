@@ -71,12 +71,15 @@ VIDEO_GID=44 RENDER_GID=999 ./dc.sh up
 | --- | --- |
 | `dc.sh` | Entry point for setup and day-to-day Compose |
 | `docker-compose.yml.example` | Runtime services (`flash-next`, `fabric-clock`, `model-download`) |
-| `docker-compose.override.yml.example` | Optional tsdproxy network / labels |
+| `docker-compose.override.yml.example` | Optional tsdproxy network / labels + Prometheus/Grafana |
 | `_build.yml` | Local image builds (`harianto/flash-next`, `harianto/hf-downloader`) |
 | `_push.yml` | Developer Hub multi-arch publish (amd64 + arm64); use `./dc.sh push` |
-| `.env.example` | Tokens, model paths, tags, context window, NPU flag |
+| `.env.example` | Tokens, model paths, tags, context window, NPU flag, Grafana admin |
 | `src/flash-next/` | Gufo image Dockerfile + serve scripts |
 | `src/model-download/` | Hugging Face downloader image |
+| `src/prometheus/` | Prometheus scrape config (gufo `/metrics`) |
+| `src/grafana/` | Grafana provisioning + Gufo dashboard |
+| `.data/` | Runtime state for Prometheus TSDB + Grafana (gitignored) |
 | `docs/` | Troubleshooting (NPU) and notes |
 | `models/` | Local GGUF weights (gitignored) |
 
@@ -107,4 +110,8 @@ Important variables (see `.env.example`):
 - Context window: `GUFO_CONTEXT` sets the serve context (default `131072` = 128K tokens). The model supports up to `262144` (256K), but KV-cache memory scales with the window — only raise it if VRAM allows, or load/serve may crash under memory pressure.
 - First model load can take several minutes; `up` / `restart` poll `/v1/models` for up to ~10 minutes.
 - Build args (ROCm version, `gfx` target, gufo ref, NPU compile) live in `_build.yml` and can be overridden via `.env`.
+- Monitoring (optional, via `docker-compose.override.yml`): Prometheus scrapes
+  `flash-next:8900/metrics`; Grafana is published by tsdproxy as hostname
+  `grafana` (login from `GRAFANA_ADMIN_*` in `.env`). Config lives under
+  `src/prometheus/` and `src/grafana/`; runtime data under `.data/`.
 - Changelog entries live in `.changelog/` (not a root `CHANGELOG.md`).
