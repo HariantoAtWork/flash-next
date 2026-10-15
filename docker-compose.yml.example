@@ -92,6 +92,8 @@ services:
       GUFO_MMPROJ: "${GUFO_MMPROJ:-/models/Qwen3.8-Flash-Next-GGUF/mmproj-BF16.gguf}"
       PORT: "${FLASH_NEXT_PORT:-8900}"
       JOBS: "${GUFO_JOBS:-2}"
+      # Serve context window (tokens). Default 128K; model max is 262144
+      # if VRAM allows. KV-cache memory scales with this value.
       GUFO_CONTEXT: "${GUFO_CONTEXT:-131072}"
       GUFO_EFFORT: "${GUFO_EFFORT:-low}"
       GUFO_NPU: "${GUFO_NPU:-0}"
