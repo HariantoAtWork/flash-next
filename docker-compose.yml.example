@@ -29,29 +29,11 @@ services:
       HF_MTP_MODEL_REVISION: ${HF_MTP_MODEL_REVISION:-main}
       HF_MMPROJ_MODEL: ${HF_MMPROJ_MODEL:-}
       HF_MMPROJ_MODEL_REVISION: ${HF_MMPROJ_MODEL_REVISION:-}
-    command:
-      - sh
-      - -ec
-      - |
-        dest="/workspace/models/$$(basename "$$HF_REPO")"
-        for shard in $$HF_MODEL_FILES; do
-          hf download "$$HF_REPO" "$$shard" \
-            --revision "$$HF_MODEL_REVISION" \
-            --repo-type model \
-            --local-dir "$$dest"
-        done
-        if [ -n "$${HF_MTP_MODEL:-}" ]; then
-          hf download "$$HF_REPO" "$$HF_MTP_MODEL" \
-            --revision "$${HF_MTP_MODEL_REVISION:-$$HF_MODEL_REVISION}" \
-            --repo-type model \
-            --local-dir "$$dest"
-        fi
-        if [ -n "$${HF_MMPROJ_MODEL:-}" ]; then
-          hf download "$$HF_REPO" "$$HF_MMPROJ_MODEL" \
-            --revision "$${HF_MMPROJ_MODEL_REVISION:-$$HF_MODEL_REVISION}" \
-            --repo-type model \
-            --local-dir "$$dest"
-        fi
+      # Always show tqdm/xet bars (override agent auto-detect / missing TTY).
+      HF_HUB_DISABLE_PROGRESS_BARS: "0"
+      PYTHONUNBUFFERED: "1"
+      TERM: ${TERM:-xterm-256color}
+    # Entrypoint is download-models (see src/model-download/Dockerfile).
 
   # One-shot init for the NPU path: pins the GPU fabric clock (pp_dpm_fclk)
   # at its top level before flash-next starts, then exits. Needs privileged

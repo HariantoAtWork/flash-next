@@ -157,9 +157,17 @@ case "${cmd}" in
         ;;
     download)
         # model-download is behind compose profile "init" so plain `up` skips it.
+        # Progress bars need a TTY (./dc.sh download in a real terminal).
         echo "==> Downloading model weights (profile init; idempotent)"
         mapfile -t MAIN < <(compose_main)
-        ${COMPOSE} "${MAIN[@]}" --profile init run --rm model-download
+        if [ -t 1 ]; then
+            echo "==> Progress bars enabled (interactive TTY)"
+            ${COMPOSE} "${MAIN[@]}" --profile init run --rm model-download
+        else
+            echo "==> No TTY: bars may be limited. Tip: run from a terminal, or watch size with:"
+            echo "    watch -n2 du -sh ${MODELS_DIR:-./models}/\$(basename \"\${HF_REPO:-model}\")"
+            ${COMPOSE} "${MAIN[@]}" --profile init run --rm -T model-download
+        fi
         ;;
     up)
         services="${@:-flash-next}"
