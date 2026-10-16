@@ -87,20 +87,34 @@ export_gpu_gids() {
     echo "==> GPU gids: video=${VIDEO_GID:-?} render=${RENDER_GID:-?}"
 }
 
+# Format seconds as e.g. 45s, 2m 34s, 1h 05m 12s.
+format_elapsed() {
+    local total="${1:-0}"
+    local h=$((total / 3600)) m=$(((total % 3600) / 60)) s=$((total % 60))
+    if [ "$h" -gt 0 ]; then
+        printf '%dh %02dm %02ds' "$h" "$m" "$s"
+    elif [ "$m" -gt 0 ]; then
+        printf '%dm %02ds' "$m" "$s"
+    else
+        printf '%ds' "$s"
+    fi
+}
+
 # Wait until the serve healthcheck reports the API is up.
 wait_ready() {
     echo "Waiting for flash-next (model load can take up to 10 minutes)..."
     local -a main
+    local started=$SECONDS
     mapfile -t main < <(compose_main)
     for _ in $(seq 1 120); do
         if docker compose "${main[@]}" exec -T flash-next \
             curl -sf http://127.0.0.1:8900/v1/models >/dev/null 2>&1; then
-            echo "flash-next is ready."
+            echo "flash-next is ready ($(format_elapsed $((SECONDS - started))))."
             return 0
         fi
         sleep 10
     done
-    echo "Timed out waiting for flash-next. Check ./dc.sh logs" >&2
+    echo "Timed out waiting for flash-next after $(format_elapsed $((SECONDS - started))). Check ./dc.sh logs" >&2
     return 1
 }
 
