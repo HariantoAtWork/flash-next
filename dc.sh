@@ -34,6 +34,9 @@ cd "$(dirname "$0")"
 COMPOSE="docker compose"
 BUILD="-f _build.yml"
 PUSH="-f _push.yml"
+# Multi-arch push needs a docker-container buildx builder (the default
+# docker driver cannot build/push multiple platforms).
+PUSH_BUILDER="${PUSH_BUILDER:-flash-next-multiarch}"
 
 usage() {
     sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
@@ -151,9 +154,24 @@ case "${cmd}" in
     push)
         # Developers only: Hub multi-arch publish (linux/amd64 + linux/arm64).
         # Not needed for local init/build/download/up.
+        # The default docker driver cannot build multi-platform images, so we
+        # ensure QEMU binfmt + a docker-container buildx builder first.
         services="${@:-}"
+        echo "==> Ensuring QEMU binfmt for cross-arch builds"
+        docker run --privileged --rm tonistiigi/binfmt --install amd64,arm64 >/dev/null
+        if ! docker buildx inspect "${PUSH_BUILDER}" >/dev/null 2>&1; then
+            echo "==> Creating multi-arch builder: ${PUSH_BUILDER}"
+            docker buildx create \
+                --name "${PUSH_BUILDER}" \
+                --driver docker-container \
+                --platform linux/amd64,linux/arm64 \
+                --use
+            docker buildx inspect --bootstrap "${PUSH_BUILDER}" >/dev/null
+        else
+            docker buildx use "${PUSH_BUILDER}"
+        fi
         echo "==> [developers] multi-arch build+push via _push.yml: ${services:-all}"
-        ${COMPOSE} ${PUSH} build --no-cache --push ${services}
+        ${COMPOSE} ${PUSH} build --builder "${PUSH_BUILDER}" --no-cache --push ${services}
         ;;
     download)
         # model-download is behind compose profile "init" so plain `up` skips it.
