@@ -57,7 +57,7 @@ curl -s http://127.0.0.1:8900/v1/models
 | `down` | Stop stack |
 | `restart` | Recreate `flash-next` with current gids |
 | `ps` / `logs` / `run` / `pull` / `config` | Thin wrappers around Compose |
-| `push [service…]` | **Developers:** multi-arch build+push via `_push.yml` (amd64 + arm64) |
+| `push [service…]` | **Developers:** amd64 build+push via `_push.yml` (Strix Halo / this host) |
 
 GPU group override:
 
@@ -73,7 +73,7 @@ VIDEO_GID=44 RENDER_GID=999 ./dc.sh up
 | `docker-compose.yml.example` | Runtime services (`flash-next`, `fabric-clock`, `model-download`) |
 | `docker-compose.override.yml.example` | Optional tsdproxy network / labels + Prometheus/Grafana |
 | `_build.yml` | Local image builds (`harianto/flash-next`, `harianto/hf-downloader`) |
-| `_push.yml` | Developer Hub multi-arch publish (amd64 + arm64); use `./dc.sh push` |
+| `_push.yml` | Developer Hub amd64 publish; use `./dc.sh push` |
 | `.env.example` | Tokens, model paths, tags, context window, NPU flag, Grafana admin |
 | `src/flash-next/` | Gufo image Dockerfile + serve scripts |
 | `src/model-download/` | Hugging Face downloader image |

@@ -1,6 +1,6 @@
-# Overlay for Hub multi-arch publishes (self-contained; not merged with _build.yml).
-# Multi-arch cannot be loaded into the local Docker engine, so local
-# builds stay on _build.yml only (./dc.sh build).
+# Overlay for Hub publishes (self-contained; not merged with _build.yml).
+# Strix Halo / ROCm / gfx1151 is amd64-only — no arm64 multi-arch.
+# Local loads stay on _build.yml (./dc.sh build).
 services:
   model-download:
     build:
@@ -8,7 +8,6 @@ services:
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
-        - linux/arm64
     image: harianto/hf-downloader:${HF_DOWNLOADER_TAG:-latest}
 
   flash-next:
@@ -26,5 +25,4 @@ services:
         BUILD_PARALLEL: "${BUILD_PARALLEL:-2}"
       platforms:
         - linux/amd64
-        - linux/arm64
     image: harianto/flash-next:${FLASH_NEXT_TAG:-gufo-fork-enhancements}
