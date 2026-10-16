@@ -99,6 +99,9 @@ services:
       GUFO_PREFILL_TILE: "${GUFO_PREFILL_TILE:-8192}"
       GUFO_EFFORT: "${GUFO_EFFORT:-low}"
       GUFO_NPU: "${GUFO_NPU:-0}"
+      # Set NPU power mode at serve start (performance|balanced|default|powersaver).
+      # Empty = leave host mode unchanged. Resets on every driver load / reboot.
+      GUFO_NPU_PMODE: "${GUFO_NPU_PMODE:-}"
       XRT_DIR: "${XRT_DIR:-/opt/xilinx/xrt}"
       GUFO_CACHE_DIR: /root/.cache/gufo/snapshots
       GUFO_LOG: /root/.cache/gufo/gufo.log

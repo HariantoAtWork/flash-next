@@ -101,13 +101,14 @@ Important variables (see `.env.example`):
 | `GUFO_CONTEXT` | Serve context window in tokens (default `131072` = 128K; model max `262144` = 256K) |
 | `GUFO_PREFILL_TILE` | Prefill chunk in tokens (default `8192`; ~3 GiB scratch; try `16384` for ~9 GiB / more speed) |
 | `GUFO_NPU` | `1` = NPU path (fabric clock held by `fabric-clock` service); `0` = GPU-only |
+| `GUFO_NPU_PMODE` | NPU power mode at serve start (`performance` / `balanced` / …); empty = leave unchanged |
 | `VIDEO_GID` / `RENDER_GID` | Optional; otherwise detected from `/dev/dri` |
 
 ## Notes
 
 - Newcomers: `./dc.sh init` builds `model-download` only; `./dc.sh up` pulls `harianto/flash-next` from Docker Hub. Building `flash-next` locally is optional (developers / custom ROCm builds).
 - `model-download` uses compose profile `init`, so plain `docker compose up` / `./dc.sh up` never starts it — only `./dc.sh download` (or `--profile init`).
-- NPU (`GUFO_NPU=1`): the one-shot `fabric-clock` service pins the GPU fabric clock before `flash-next` starts. Keep `GUFO_NPU=0` to stay GPU-only; the serve script still skips NPU unless `/dev/accel/accel0` is present and the clock is held. `compose down` does not release the clock (it resets at reboot). See [docs/troubleshoot-npu.md](docs/troubleshoot-npu.md).
+- NPU (`GUFO_NPU=1`): the one-shot `fabric-clock` service pins the GPU fabric clock before `flash-next` starts. `GUFO_NPU_PMODE` (e.g. `performance`) is applied via `xrt-smi` at serve start — no manual `docker exec` needed. Keep `GUFO_NPU=0` to stay GPU-only; the serve script still skips NPU unless `/dev/accel/accel0` is present and the clock is held. `compose down` does not release the clock (it resets at reboot). See [docs/troubleshoot-npu.md](docs/troubleshoot-npu.md).
 - Context window: `GUFO_CONTEXT` sets the serve context (default `131072` = 128K tokens). The model supports up to `262144` (256K), but KV-cache memory scales with the window — only raise it if VRAM allows, or load/serve may crash under memory pressure.
 - Prefill tile: `GUFO_PREFILL_TILE` sets the NPU/GPU prefill chunk (default `8192`). Larger tiles fill routed-expert work better; the gufo fork docs prefer `16384` (~9 GiB scratch vs ~3 GiB at 8192).
 - First model load can take several minutes; `up` / `restart` poll `/v1/models` for up to ~10 minutes.

@@ -27,6 +27,32 @@ if [ "${GUFO_NPU:-1}" != 0 ] && [ -e /dev/accel/accel0 ] && [ -d "$GUFO_DIR/tool
   elif command -v xrt-smi >/dev/null 2>&1; then
     xrt_smi="$(command -v xrt-smi)"
   fi
+
+  # Optional: set NPU power mode before the turbo guard (resets on driver load).
+  # GUFO_NPU_PMODE=performance|balanced|default|powersaver  (turbo refused)
+  pmode=${GUFO_NPU_PMODE:-}
+  if [ -n "$pmode" ]; then
+    if [ -z "$xrt_smi" ]; then
+      echo "WARNING: GUFO_NPU_PMODE=$pmode set but xrt-smi not found; leaving mode unchanged." >&2
+    else
+      case "$pmode" in
+        default|powersaver|balanced|performance)
+          if ! "$xrt_smi" configure --pmode "$pmode" >/dev/null; then
+            echo "WARNING: failed to set NPU power mode to $pmode." >&2
+          else
+            echo "NPU power mode set to $pmode." >&2
+          fi
+          ;;
+        turbo)
+          echo "WARNING: GUFO_NPU_PMODE=turbo is unsupported (gufo skips NPU); leaving mode unchanged." >&2
+          ;;
+        *)
+          echo "WARNING: unknown GUFO_NPU_PMODE=$pmode (use default|powersaver|balanced|performance)." >&2
+          ;;
+      esac
+    fi
+  fi
+
   if ! "$GUFO_DIR/tools/npu/fabric-clock.sh" status > /dev/null 2>&1; then
     echo "WARNING: GPU fabric clock not held: running without the NPU." >&2
   elif [ -n "$xrt_smi" ] && "$xrt_smi" examine -r platform 2>&1 | grep -qi "power mode *: turbo"; then

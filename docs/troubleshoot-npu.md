@@ -31,30 +31,39 @@ No such warning + `GUFO_NPU=1` usually means NPU was enabled for that start.
 `docker-serve.sh` ran `xrt-smi examine -r platform` and saw power mode
 `turbo`. Gufo skips the NPU in that mode (even if the fabric clock is held).
 
-### Fix (host or container)
+### Fix (preferred: env at serve start)
 
-The image ships `xrt-smi` via `libxrt-utils` / `libxrt-utils-npu` (`/usr/bin/xrt-smi`).
-Power mode resets on every driver load, so set it after each boot (host or a
-privileged container with `/dev/accel`):
-
-```bash
-# From the host (if xrt-smi is installed there):
-sudo xrt-smi configure --pmode performance
-# or from the flash-next container:
-docker exec flash-next xrt-smi configure --pmode performance
-# balanced also works; do not use turbo
-```
-
-Confirm:
+Set in `.env` so `docker-serve.sh` runs `xrt-smi configure` before the turbo
+guard on every start (no post-hoc `docker exec`):
 
 ```bash
-docker exec flash-next xrt-smi examine -r platform | grep -i 'power mode'
+GUFO_NPU=1
+GUFO_NPU_PMODE=performance
+# or: balanced | default | powersaver  (never turbo)
 ```
 
-Then recreate the serve container so it re-checks:
+Then:
 
 ```bash
 ./dc.sh restart
+```
+
+Power mode resets on every driver load / reboot; the env re-applies it each
+serve start. Confirm:
+
+```bash
+docker exec flash-next xrt-smi examine -r platform | grep -i 'power mode'
+# or look for: NPU power mode set to performance.
+```
+
+### Manual (host or running container)
+
+The image ships `xrt-smi` via `libxrt-utils` / `libxrt-utils-npu`:
+
+```bash
+sudo xrt-smi configure --pmode performance
+# or:
+docker exec flash-next xrt-smi configure --pmode performance
 ```
 
 ### If `xrt-smi` is still missing
