@@ -21,29 +21,37 @@ services:
       - "${MODELS_DIR:-./models}:/workspace/models"
     environment:
       HF_TOKEN: ${HF_TOKEN:-}
+      HF_REPO: ${HF_REPO:?set HF_REPO}
+      HF_MODEL_REVISION: ${HF_MODEL_REVISION:-main}
+      # Whitespace-separated paths relative to the HF repo root
+      HF_MODEL_FILES: ${HF_MODEL_FILES:?set HF_MODEL_FILES}
+      HF_MTP_MODEL: ${HF_MTP_MODEL:-}
+      HF_MTP_MODEL_REVISION: ${HF_MTP_MODEL_REVISION:-main}
+      HF_MMPROJ_MODEL: ${HF_MMPROJ_MODEL:-}
+      HF_MMPROJ_MODEL_REVISION: ${HF_MMPROJ_MODEL_REVISION:-}
     command:
       - sh
       - -ec
       - |
         dest="/workspace/models/$$(basename "$$HF_REPO")"
-        for shard in \
-          UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf \
-          UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00002-of-00003.gguf \
-          UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00003-of-00003.gguf
-        do
+        for shard in $$HF_MODEL_FILES; do
           hf download "$$HF_REPO" "$$shard" \
             --revision "$$HF_MODEL_REVISION" \
             --repo-type model \
             --local-dir "$$dest"
         done
-        hf download "$$HF_REPO" "$$HF_MTP_MODEL" \
-          --revision "$$HF_MTP_MODEL_REVISION" \
-          --repo-type model \
-          --local-dir "$$dest"
-        hf download "$$HF_REPO" "$${HF_MMPROJ_MODEL:-mmproj-BF16.gguf}" \
-          --revision "$${HF_MMPROJ_MODEL_REVISION:-$$HF_MODEL_REVISION}" \
-          --repo-type model \
-          --local-dir "$$dest"
+        if [ -n "$${HF_MTP_MODEL:-}" ]; then
+          hf download "$$HF_REPO" "$$HF_MTP_MODEL" \
+            --revision "$${HF_MTP_MODEL_REVISION:-$$HF_MODEL_REVISION}" \
+            --repo-type model \
+            --local-dir "$$dest"
+        fi
+        if [ -n "$${HF_MMPROJ_MODEL:-}" ]; then
+          hf download "$$HF_REPO" "$$HF_MMPROJ_MODEL" \
+            --revision "$${HF_MMPROJ_MODEL_REVISION:-$$HF_MODEL_REVISION}" \
+            --repo-type model \
+            --local-dir "$$dest"
+        fi
 
   # One-shot init for the NPU path: pins the GPU fabric clock (pp_dpm_fclk)
   # at its top level before flash-next starts, then exits. Needs privileged
@@ -90,6 +98,8 @@ services:
       GUFO_MODEL: "${GUFO_MODEL:?set GUFO_MODEL to the first UD-IQ4_XS shard}"
       GUFO_MTP: "${GUFO_MTP:-}"
       GUFO_MMPROJ: "${GUFO_MMPROJ:-/models/Qwen3.8-Flash-Next-GGUF/mmproj-BF16.gguf}"
+      # OpenAI `model` id (e.g. flash-next). Default: Qwen3.8 Flash Next
+      GUFO_SERVED_MODEL_NAME: "${GUFO_SERVED_MODEL_NAME:-}"
       PORT: "${FLASH_NEXT_PORT:-8900}"
       JOBS: "${GUFO_JOBS:-2}"
       # Serve context window (tokens). Default 128K; model max is 262144

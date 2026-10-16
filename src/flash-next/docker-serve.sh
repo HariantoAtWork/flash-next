@@ -85,10 +85,13 @@ else
   VISION=()
 fi
 
+# OpenAI model id clients send in `model:` (single name; gufo has no multi-alias).
+SERVED_NAME=${GUFO_SERVED_MODEL_NAME:-Qwen3.8 Flash Next}
+
 exec env "${NPU_ENV[@]}" "$GUFO_BIN" serve llm \
   -m "$GUFO_MODEL" \
   --host 0.0.0.0 \
-  --served-model-name "Qwen3.8 Flash Next" \
+  --served-model-name "$SERVED_NAME" \
   --port "$PORT" \
   -c "$CONTEXT" \
   -n 16384 \
