@@ -112,6 +112,16 @@ RUN set -eux; \
     test -x /opt/gufo/build/release/gufo; \
     /opt/gufo/build/release/gufo --help >/dev/null
 
+# xrt-smi (NPU power-mode check/configure). Separate layer so the gufo
+# compile above stays cacheable when only utils change.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        libxrt-utils \
+        libxrt-utils-npu; \
+    rm -rf /var/lib/apt/lists/*; \
+    test -x /usr/bin/xrt-smi
+
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY docker-serve.sh /usr/local/bin/docker-serve.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-serve.sh

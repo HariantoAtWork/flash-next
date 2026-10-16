@@ -20,13 +20,22 @@ export GUFO_PREFILL_TILE=${GUFO_PREFILL_TILE:-8192}
 NPU_ENV=()
 if [ "${GUFO_NPU:-1}" != 0 ] && [ -e /dev/accel/accel0 ] && [ -d "$GUFO_DIR/tools/npu" ]; then
   xrt_dir=${XRT_DIR:-/opt/xilinx/xrt}
+  # PPA XRT puts xrt-smi on PATH (/usr/bin); classic installs use $XRT_DIR/bin.
+  xrt_smi=""
+  if [ -x "${xrt_dir}/bin/xrt-smi" ]; then
+    xrt_smi="${xrt_dir}/bin/xrt-smi"
+  elif command -v xrt-smi >/dev/null 2>&1; then
+    xrt_smi="$(command -v xrt-smi)"
+  fi
   if ! "$GUFO_DIR/tools/npu/fabric-clock.sh" status > /dev/null 2>&1; then
     echo "WARNING: GPU fabric clock not held: running without the NPU." >&2
-  elif [ -x "${xrt_dir}/bin/xrt-smi" ] && "${xrt_dir}/bin/xrt-smi" examine -r platform 2>&1 | grep -qi "power mode *: turbo"; then
+  elif [ -n "$xrt_smi" ] && "$xrt_smi" examine -r platform 2>&1 | grep -qi "power mode *: turbo"; then
     echo "WARNING: NPU is in turbo mode: running without the NPU." >&2
   else
     NPU_ENV=(GUFO_NPU_DIR="$GUFO_DIR/tools/npu")
-    export LD_LIBRARY_PATH="${xrt_dir}/lib:${LD_LIBRARY_PATH}"
+    if [ -d "${xrt_dir}/lib" ]; then
+      export LD_LIBRARY_PATH="${xrt_dir}/lib:${LD_LIBRARY_PATH}"
+    fi
   fi
 fi
 

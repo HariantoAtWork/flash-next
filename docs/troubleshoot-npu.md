@@ -31,20 +31,24 @@ No such warning + `GUFO_NPU=1` usually means NPU was enabled for that start.
 `docker-serve.sh` ran `xrt-smi examine -r platform` and saw power mode
 `turbo`. Gufo skips the NPU in that mode (even if the fabric clock is held).
 
-### Fix (on the host)
+### Fix (host or container)
 
-Install/use AMD XRT so `xrt-smi` is available, then:
+The image ships `xrt-smi` via `libxrt-utils` / `libxrt-utils-npu` (`/usr/bin/xrt-smi`).
+Power mode resets on every driver load, so set it after each boot (host or a
+privileged container with `/dev/accel`):
 
 ```bash
+# From the host (if xrt-smi is installed there):
 sudo xrt-smi configure --pmode performance
-# or:
-sudo xrt-smi configure --pmode balanced
+# or from the flash-next container:
+docker exec flash-next xrt-smi configure --pmode performance
+# balanced also works; do not use turbo
 ```
 
 Confirm:
 
 ```bash
-sudo xrt-smi examine -r platform | grep -i 'power mode'
+docker exec flash-next xrt-smi examine -r platform | grep -i 'power mode'
 ```
 
 Then recreate the serve container so it re-checks:
@@ -53,14 +57,12 @@ Then recreate the serve container so it re-checks:
 ./dc.sh restart
 ```
 
-### If `xrt-smi` is missing
+### If `xrt-smi` is still missing
 
-- On many hosts XRT lives under `/opt/xilinx/xrt` (override with `XRT_DIR` in
-  `.env` if needed).
-- This flash-next image may not ship `xrt-smi`. If the binary is not executable
-  at `${XRT_DIR}/bin/xrt-smi` **inside** the container, the turbo check is
-  skipped — NPU can still start when the other conditions pass. Prefer fixing
-  power mode on the host before relying on that.
+- Classic XRT installs put the binary under `/opt/xilinx/xrt/bin` (override
+  with `XRT_DIR` in `.env`). The serve script also accepts `xrt-smi` on `PATH`.
+- Rebuild the image if you are on an older tag that only had the XRT libs:
+  `docker compose -f _build.yml build flash-next`.
 
 ---
 
