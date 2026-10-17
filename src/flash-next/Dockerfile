@@ -4,7 +4,9 @@ FROM ubuntu:24.04
 ARG ROCM_VERSION=7.2.4
 ARG TARGET_GFX=gfx1151
 ARG GUFO_REPO=https://github.com/mikealanni/gufo.git
-ARG GUFO_REF=fork-enhancements
+# Pin to the SHA of the first successful flash-next build (2026-10-12).
+# Branch names still work; commit SHAs need fetch (not git clone --branch).
+ARG GUFO_REF=afe7adee5b4acec5af6be73fd3f8169059bf9b8f
 # This fork links NpuGemm at compile time; GPU-only builds fail without NPU enabled.
 ARG GUFO_ENABLE_NPU=ON
 ARG GUFO_XRT_INCLUDE_DIR=/usr/include
@@ -80,9 +82,20 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
-    git clone --depth 1 --branch "${GUFO_REF}" "${GUFO_REPO}" /opt/gufo; \
+    git init /opt/gufo; \
     cd /opt/gufo; \
+    git remote add origin "${GUFO_REPO}"; \
+    git fetch --depth 1 origin "${GUFO_REF}"; \
+    git checkout --force FETCH_HEAD; \
     revision="$(git rev-parse --short HEAD)"; \
+    # When GUFO_REF is a commit id, refuse a mismatch; branch/tag names skip this.
+    if printf '%s' "${GUFO_REF}" | grep -Eq '^[0-9a-fA-F]{7,40}$'; then \
+        expected="$(printf '%s' "${GUFO_REF}" | cut -c1-7)"; \
+        case "${revision}" in "${expected}"*) ;; *) \
+            echo "gufo HEAD ${revision} does not match GUFO_REF ${GUFO_REF}" >&2; \
+            exit 1; \
+        esac; \
+    fi; \
     release="$(tr -d '\n\r' < version.txt 2>/dev/null || echo development)"; \
     if [ "${GUFO_ENABLE_NPU}" = "ON" ]; then \
         if [ -z "${GUFO_XRT_INCLUDE_DIR}" ]; then \
