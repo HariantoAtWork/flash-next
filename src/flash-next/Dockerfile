@@ -4,9 +4,9 @@ FROM ubuntu:24.04
 ARG ROCM_VERSION=7.2.4
 ARG TARGET_GFX=gfx1151
 ARG GUFO_REPO=https://github.com/mikealanni/gufo.git
-# Pin to the SHA of the first successful flash-next build (2026-10-12).
+# Pin to fork-enhancements tip as of 2026-10-17 (dfb5f578).
 # Branch names still work; commit SHAs need fetch (not git clone --branch).
-ARG GUFO_REF=afe7adee5b4acec5af6be73fd3f8169059bf9b8f
+ARG GUFO_REF=dfb5f578eec1f25fc49d6516225a5229f29a90c8
 # This fork links NpuGemm at compile time; GPU-only builds fail without NPU enabled.
 ARG GUFO_ENABLE_NPU=ON
 ARG GUFO_XRT_INCLUDE_DIR=/usr/include
